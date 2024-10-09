@@ -1,18 +1,10 @@
 # json-editor
-
-This template should help get you started developing with Vue 3 in Vite.
-
-## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+本工具用于解决长JSON配置文件的编辑问题，通过树形结构展示JSON配置，方便查看和修改。
+工具使用方法：
+ - 1.在左侧粘入需要修改的JSON配置，ctrl+S保存并刷新节点树。
+ - 2.点击节点树到最后一个节点或者在需要修改的节点按下ctrl+左键点击，在右侧编辑框查看和修改配置。
+ - 3.修改完毕后，点击右侧编辑框的保存按钮，ctrl+S保存并刷新节点树。
+ - 4.从左侧的编辑框全选并复制，粘贴到需要的地方。
 
 ## Project Setup
 
