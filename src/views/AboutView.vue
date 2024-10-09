@@ -1,5 +1,5 @@
 <template>
-  <div class="about">
+  <div>
     <h1>装修中</h1>
     <pre>
       json编辑器使用方法：
@@ -15,11 +15,4 @@
 </template>
 
 <style>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-  }
-}
 </style>
