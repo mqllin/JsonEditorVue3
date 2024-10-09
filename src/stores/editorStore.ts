@@ -1,55 +1,85 @@
-// src/stores/editorStore.ts
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, toRaw } from 'vue';
+import * as monaco from "monaco-editor";
 
 export const useEditorStore = defineStore('editor', () => {
-    // The code content from the editor
     const code = ref('{}');
-
-    // Parsed JSON data
     const parsedData = computed(() => {
         try {
-            if (code.value) {
-                return JSON.parse(code.value);
-            } else {
-                console.error('无效的JSON',code.value)
-                return code.value;
-            }
+            return JSON.parse(code.value);
         } catch (e) {
-            console.error('Invalid JSON:', e);
             return {};
         }
     });
 
-    // Selected path in the node columns
-    const selectedPath = ref([]);
+    const selectedPath = ref([]);  // 保存选中的路径
+    const selectedIndices = ref([]); // 保存选中节点的索引
+    const selectedNodeData = ref(''); // 保存选中的节点数据
+    const monacoLeft = ref<monaco.editor.IStandaloneCodeEditor>();
+    const monacoRight = ref<monaco.editor.IStandaloneCodeEditor>();
 
-    // Data for the selected node
-    const selectedNodeData = ref('');
+    function setMonacoLeft(newCode: monaco.editor.IStandaloneCodeEditor) {
+        monacoLeft.value = newCode;
+    }
 
-    // Function to update the code
+    function setMonacoRight(newCode: any) {
+        monacoRight.value = newCode;
+    }
+
     function updateCode(newCode: string) {
         code.value = newCode;
     }
 
-    // Function to update the selected node data
+    function updateSelectedPath(path: any[]) {
+        selectedPath.value = path;
+    }
+
     function updateSelectedNodeData(newData: string) {
         selectedNodeData.value = newData;
     }
 
-    // Function to reset selected path and node data when code changes
     function resetSelection() {
         selectedPath.value = [];
         selectedNodeData.value = '';
     }
 
+    // 将修改后的数据同步回 parsedData
+    function updateNodeInParsedData(newValue: any) {
+        let currentNode = parsedData.value;
+
+        for (let i = 0; i < selectedPath.value.length - 1; i++) {
+            const { key } = selectedPath.value[i];
+            currentNode = currentNode[key];
+        }
+
+        const lastNode = selectedPath.value[selectedPath.value.length - 1];
+        currentNode[lastNode.key] = newValue;
+
+        // 同步更新代码
+        const updatedCode = JSON.stringify(parsedData.value, null, 4);
+        updateCode(updatedCode);
+
+        // 使用 monaco 编辑器更新左侧的代码视图
+        if (monacoLeft.value) {
+            toRaw(monacoLeft.value)?.setValue(updatedCode);
+        }
+    }
+
+
     return {
         code,
         parsedData,
         selectedPath,
+        monacoLeft,
+        monacoRight,
+        setMonacoLeft,
+        setMonacoRight,
+        selectedIndices,
         selectedNodeData,
         updateCode,
+        updateSelectedPath,
         updateSelectedNodeData,
         resetSelection,
+        updateNodeInParsedData,
     };
 });

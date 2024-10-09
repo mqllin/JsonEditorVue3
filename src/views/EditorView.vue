@@ -1,9 +1,8 @@
-<!-- EditorView.vue -->
 <template>
   <div class="editor-bar">JSON编辑器</div>
   <div class="workbench">
     <editor-left class="editor-window"></editor-left>
-    <div class="node-columns">
+    <div class="node-columns" id="node-columns">
       <div
           class="node-column"
           v-for="(nodes, index) in nodeColumns"
@@ -12,7 +11,9 @@
       >
         <node-selector
             :nodes="nodes"
-            @nodeSelected="(node) => handleNodeSelected(node, index)"
+            :selectedIndex="editorStore.selectedIndices[index]"
+            :title="getKeynameForLevel(index)"
+            @nodeSelected="(node, nodeIndex,isControlOrCommand) => handleNodeSelected(node, nodeIndex, index,isControlOrCommand)"
         ></node-selector>
       </div>
     </div>
@@ -24,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, toRaw } from 'vue';
 import { useEditorStore } from '@/stores/editorStore';
 import EditorLeft from '@/components/EditorLeft.vue';
 import EditorRight from '@/components/EditorRight.vue';
@@ -32,46 +33,32 @@ import NodeSelector from '@/components/NodeSelector.vue';
 
 const editorStore = useEditorStore();
 
-// Compute the node columns based on the selected path
+// 计算每列的节点
 const nodeColumns = computed(() => {
   const columns = [];
   let currentData = editorStore.parsedData;
 
-  console.log('currentData',currentData)
-  // First column: root nodes
-  columns.push(
-      Object.entries(currentData).map(([key, value]) => ({
-        key,
-        value,
-      }))
-  );
+  if (typeof currentData === 'object' && currentData !== null) {
+    columns.push(
+        Object.entries(currentData).map(([key, value]) => ({
+          key,
+          value,
+        }))
+    );
+  } else {
+    columns.push([{key: 'Root', value: currentData}]);
+  }
 
-  // Subsequent columns based on selected path
   for (let i = 0; i < editorStore.selectedPath.length; i++) {
     const selectedNode = editorStore.selectedPath[i];
-    if (
-        selectedNode &&
-        typeof selectedNode.value === 'object' &&
-        selectedNode.value !== null
-    ) {
+    if (selectedNode && typeof selectedNode.value === 'object' && selectedNode.value !== null) {
       currentData = selectedNode.value;
-      const entries = Object.entries(currentData);
-      if (entries.length > 0) {
-        columns.push(
-            entries.map(([key, value]) => ({
-              key,
-              value,
-            }))
-        );
-      } else {
-        columns.push([]);
-      }
+      columns.push(Object.entries(currentData).map(([key, value]) => ({key, value})));
     } else {
       break;
     }
   }
 
-  // Ensure at least 3 columns
   while (columns.length < 3) {
     columns.push([]);
   }
@@ -79,28 +66,44 @@ const nodeColumns = computed(() => {
   return columns;
 });
 
-// Handle node selection
-function handleNodeSelected(node, index) {
-  editorStore.selectedPath = editorStore.selectedPath.slice(0, index);
-  editorStore.selectedPath.push(node);
-  if (
-      typeof node.value !== 'object' ||
-      node.value === null ||
-      Object.keys(node.value).length === 0
-  ) {
+// 获取每一层的 keyname
+function getKeynameForLevel(index) {
+  if (index === 0) {
+    return 'Root';
+  }
+  const selectedNode = editorStore.selectedPath[index - 1];
+  return selectedNode ? selectedNode.key : 'N/A';
+}
+
+// 处理节点选择
+function handleNodeSelected(node, nodeIndex, columnIndex, isControlOrCommand:boolean) {
+  console.log('isControlOrCommand',isControlOrCommand)
+
+  if (isControlOrCommand) {
+    // 按住了 Ctrl 或 Command 键，直接编辑当前节点
     editorStore.selectedNodeData = JSON.stringify(node.value, null, 2);
+    console.log('editorStore.selectedNodeData',editorStore.selectedNodeData)
+    setTimeout(() => {
+      toRaw(useEditorStore().monacoRight)?.setValue(editorStore.selectedNodeData);
+    }, 100);
   } else {
-    editorStore.selectedNodeData = '';
+    // 正常点击，展开下一层
+    editorStore.selectedPath = editorStore.selectedPath.slice(0, columnIndex);
+    editorStore.selectedPath.push(node);
+    editorStore.selectedIndices = editorStore.selectedIndices.slice(0, columnIndex);
+    editorStore.selectedIndices.push(nodeIndex);
+
+    if (typeof node.value !== 'object' || node.value === null || Object.keys(node.value).length === 0) {
+      editorStore.selectedNodeData = JSON.stringify(node.value, null, 2);
+      setTimeout(() => {
+        toRaw(useEditorStore().monacoRight)?.setValue(editorStore.selectedNodeData);
+      }, 100);
+    } else {
+      editorStore.selectedNodeData = '';
+    }
   }
 }
 
-// Watch for changes in code to reset selection
-watch(
-    () => editorStore.code,
-    () => {
-      editorStore.resetSelection();
-    }
-);
 </script>
 
 <style scoped lang="scss">
@@ -117,9 +120,11 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+  border-bottom: 1px solid #999;
 }
 
 .editor-window {
+  width: 400px;
   height: calc(100vh - 26px - 50px);
   overflow-y: auto;
 }
@@ -127,6 +132,7 @@ watch(
 .node-columns {
   display: flex;
   overflow-x: auto;
+  flex: 1;
 }
 
 .node-column {

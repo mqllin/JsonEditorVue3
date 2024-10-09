@@ -3,28 +3,25 @@
 </template>
 
 <script lang="ts" setup>
-import { defineEmits, defineProps, onMounted, ref, watch } from "vue";
+import { defineEmits, defineProps, onMounted, ref, toRaw } from "vue";
 import * as monaco from 'monaco-editor';
 import 'monaco-editor/esm/vs/basic-languages/css/css.contribution'
-import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution'
 import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution'
+
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
-import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 window.MonacoEnvironment = {
   getWorker(_: string, label: string) {
-    if (label === 'typescript' || label === 'javascript') return new TsWorker()
-    if (label === 'json') return new JsonWorker()
-    if (label === 'css') return new CssWorker()
-    if (label === 'html') return new HtmlWorker()
-    return new EditorWorker()
+    if (label === 'typescript' || label === 'javascript') return new TsWorker();
+    if (label === 'json') return new JsonWorker();
+    return new EditorWorker();
   }
 }
+
 const editorContainer = ref(null);
 
 defineProps({
@@ -34,35 +31,53 @@ defineProps({
   },
   width: {
     type: String,
-    default: '300px',
+    default: '100%',
   },
-
 });
 
-const emits = defineEmits(['update:modelValue', 'onChangeCode']);
+const emits = defineEmits(['update:modelValue', 'onChangeCode', 'onCursorPositionChange', 'onInit']);
 
-let editor:monaco.editor.IStandaloneCodeEditor;
+let editor: monaco.editor.IStandaloneCodeEditor;
 
 onMounted(() => {
   if (editorContainer.value) {
     editor = monaco.editor.create(editorContainer.value, {
-      value: '{"status":"code load"}',
+      value: '',
       language: 'json',
       theme: 'vs-dark',
-      automaticLayout: true, // 确保编辑器布局自动更新
-      // 禁用可能影响性能的配置项
+      automaticLayout: true,
       minimap: {enabled: false},
       scrollbar: {vertical: 'auto'},
       scrollBeyondLastLine: false,
-      readOnly: false  // 仅在必要时设为只读以提高性能
+      readOnly: false
     });
-    editor.onDidChangeModelContent((event) => {
-      const currentCode = editor.getValue();
-      emits('onChangeCode', currentCode);  // Emitting the current code to parent
+    emits('onInit', editor);
+
+    editor.onDidChangeModelContent(() => {
+      const currentCode = toRaw(editor).getValue();
+      emits('onChangeCode', currentCode);
     });
-    emits('update:modelValue', editor); // 初始化时立即发送编辑器实例
+    // 按下 Ctrl+S 时触发
+    window.addEventListener('keydown', handleKeyDown);
+
+    // 监听光标位置变化
+    editor.onDidChangeCursorPosition(() => {
+      const position = editor.getPosition();
+      if (position) {
+        emits('onCursorPositionChange', position);
+      }
+    });
   }
 });
+
+
+// 监听快捷键 (Ctrl + S 或 Cmd + S)
+function handleKeyDown(event: KeyboardEvent) {
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault();
+    editor.getAction('editor.action.formatDocument')?.run();
+  }
+}
 </script>
 
 <style>

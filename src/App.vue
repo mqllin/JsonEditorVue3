@@ -7,9 +7,8 @@ import HelloWorld from './components/HelloWorld.vue'
   <div class="page">
     <header class="header">
       <nav>
-        <RouterLink to="/">Home</RouterLink>
+        <RouterLink to="/">Editor</RouterLink>
         <RouterLink to="/about">About</RouterLink>
-        <RouterLink to="/editor">Editor</RouterLink>
       </nav>
     </header>
     <RouterView class="content"/>
@@ -24,9 +23,9 @@ import HelloWorld from './components/HelloWorld.vue'
 .header{
   display: flex;
   align-items: center;
-  border: 1px solid red;
   background: #f1f2f3;
   height: 26px;
+  border-bottom: 1px solid #999;
 }
 .content{
   flex: 1;
